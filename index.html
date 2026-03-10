@@ -257,6 +257,36 @@
     flex-shrink: 0;
   }
 
+  .member-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+
+  .chip-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .chip-badge.has-chip { background: #dbeafe; color: #1e40af; }
+  .chip-badge.no-chip { background: #fee2e2; color: #991b1b; }
+  .chip-badge:hover { filter: brightness(0.92); }
+
+  .chip-edit {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .chip-edit input {
+    width: 80px; padding: 4px 8px; font-size: 12px; font-family: inherit;
+    border: 1.5px solid var(--border); border-radius: 6px; outline: none;
+  }
+  .chip-edit input:focus { border-color: var(--accent); }
+  .chip-edit button {
+    padding: 3px 10px; font-size: 11px; font-family: inherit;
+    border: none; border-radius: 6px; cursor: pointer;
+  }
+  .chip-edit .save-btn { background: var(--accent); color: #fff; }
+  .chip-edit .cancel-btn { background: var(--border); color: var(--text); }
+
   .no-results {
     text-align: center;
     padding: 48px 20px;
@@ -439,7 +469,7 @@ document.getElementById('searchInput').addEventListener('input', e => {
     }
     const terms = q.split(/\s+/);
     const filtered = allMembers.filter(m => {
-      const haystack = (m.nachname + ' ' + m.vorname + ' ' + m.email + ' ' + m.telefon + ' ' + m.ort).toLowerCase();
+      const haystack = (m.nachname + ' ' + m.vorname + ' ' + m.email + ' ' + m.telefon + ' ' + m.ort + ' ' + m.chipnr).toLowerCase();
       return terms.every(t => haystack.includes(t));
     });
     renderList(filtered, q);
@@ -484,9 +514,25 @@ function renderList(members, query) {
 
     html += `</div></div>`;
 
+    html += `<div class="member-badges">`;
     if (m.status) {
       html += `<span class="member-status">${escHtml(m.status)}</span>`;
     }
+
+    const chipClass = m.chip === 'Ja' ? 'has-chip' : 'no-chip';
+    const chipLabel = m.chip === 'Ja' ? 'Chip: ' + escHtml(m.chipnr || '–') : 'Kein Chip';
+    const idx = allMembers.indexOf(m);
+    html += `<span class="chip-badge ${chipClass}" onclick="editChip(${idx})" title="Klicken zum Bearbeiten">${chipLabel}</span>`;
+    html += `<div class="chip-edit" id="chipEdit${idx}" style="display:none">
+      <select id="chipSel${idx}" style="padding:4px;font-size:12px;border-radius:6px;border:1.5px solid #e0e0dc;">
+        <option value="Ja" ${m.chip==='Ja'?'selected':''}>Ja</option>
+        <option value="Nein" ${m.chip!=='Ja'?'selected':''}>Nein</option>
+      </select>
+      <input id="chipNr${idx}" value="${escAttr(m.chipnr||'')}" placeholder="ChipNr.">
+      <button class="save-btn" onclick="saveChip(${idx})">OK</button>
+      <button class="cancel-btn" onclick="cancelChip(${idx})">✕</button>
+    </div>`;
+    html += `</div>`;
 
     html += `</div>`;
   });
@@ -520,6 +566,50 @@ function escHtml(s) {
 
 function escAttr(s) {
   return s.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function editChip(idx) {
+  document.getElementById('chipEdit' + idx).style.display = 'flex';
+}
+
+function cancelChip(idx) {
+  document.getElementById('chipEdit' + idx).style.display = 'none';
+}
+
+function saveChip(idx) {
+  const m = allMembers[idx];
+  const chip = document.getElementById('chipSel' + idx).value;
+  const chipnr = document.getElementById('chipNr' + idx).value.trim();
+  const pw = sessionStorage.getItem('zz_pw');
+
+  // Lokal aktualisieren
+  m.chip = chip;
+  m.chipnr = chipnr;
+
+  // An API senden
+  fetch(API_URL + '?pw=' + encodeURIComponent(pw) + '&action=updateChip' +
+    '&nachname=' + encodeURIComponent(m.nachname) +
+    '&vorname=' + encodeURIComponent(m.vorname) +
+    '&chip=' + encodeURIComponent(chip) +
+    '&chipnr=' + encodeURIComponent(chipnr))
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) alert('Fehler: ' + d.error);
+    })
+    .catch(err => alert('Speichern fehlgeschlagen: ' + err));
+
+  // UI neu rendern
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (q) {
+    const terms = q.split(/\s+/);
+    const filtered = allMembers.filter(m2 => {
+      const haystack = (m2.nachname + ' ' + m2.vorname + ' ' + m2.email + ' ' + m2.telefon + ' ' + m2.ort + ' ' + m2.chipnr).toLowerCase();
+      return terms.every(t => haystack.includes(t));
+    });
+    renderList(filtered, q);
+  } else {
+    renderList(allMembers);
+  }
 }
 </script>
 </body>
