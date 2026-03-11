@@ -385,7 +385,7 @@
 // ═══════════════════════════════════════════════════
 // KONFIGURATION
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbxXkHbHkiWKDfk4alZR4iK8tb-Nqj1DysP2fE-q53Sf4Okt4fP0DOs17_nPPhqLdquS9w/exec';
+const API_URL = 'HIER_DEINE_MITGLIEDERLISTE_API_URL';
 
 let allMembers = [];
 
@@ -410,7 +410,7 @@ function doLogin() {
       }
       // Erfolg
       sessionStorage.setItem('zz_pw', pw);
-      allMembers = data.members || [];
+      allMembers = (data.members || []).reverse();
       showApp();
     })
     .catch(() => {
@@ -451,7 +451,7 @@ function showApp() {
     .then(r => r.json())
     .then(data => {
       if (data.error) { sessionStorage.removeItem('zz_pw'); return; }
-      allMembers = data.members || [];
+      allMembers = (data.members || []).reverse();
       showApp();
     })
     .catch(() => {});
